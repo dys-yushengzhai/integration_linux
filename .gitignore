@@ -1,0 +1,13 @@
+data/
+weight/
+__pycache__/
+*.pt
+*.mtx
+*.pickle
+*.txt
+*.npy
+*.npz
+*.zip
+*.json
+data/pyg_data/
+*.txt
