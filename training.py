@@ -129,7 +129,7 @@ def train(config):
             #     dataset.append(Data(x=x,edge_index=d.edge_index))
             # loader = DataLoader(dataset,batch_size=1,shuffle=False)
         
-            f_lap = ModelPartitioning(config.pe_params)
+            f_lap = ModelPartitioning_1026_1v1(config.pe_params)
             f_lap.train()
             loss_fn = loss_normalized_cut
             optimizer = torch.optim.Adam(f_lap.parameters(),**config.pe_opt)
@@ -240,7 +240,7 @@ if __name__ == '__main__':
     # data: all or only one
     # data = 'all'
     # NotreDame_actors 卡主
-    data_train = 'imagesensor'
+    data_train = 'torso1'
     data_test = 'imagesensor'
     data = data_train if mode=='train' else data_test
 
@@ -277,13 +277,13 @@ if __name__ == '__main__':
     # whether to run partitiong embedding 
     config.is_pe = True
     config.hyper_para_loss_embedding = 1
-    config.hyper_para_loss_normalized_cut = 0.1
+    config.hyper_para_loss_normalized_cut = 0
     config.se_params = {'l':32,'pre':2,'post':2,'coarsening_threshold':2,'activation':'tanh','lins':[16,32,32,16,16]}
-    config.pe_params = {'l':32,'pre':4,'post':4,'coarsening_threshold':2,'activation':'tanh','lins':[16,16,16,16,16]}
+    config.pe_params = {'l':32,'pre':2,'post':2,'coarsening_threshold':2,'activation':'tanh','lins':[16,16,16,16,16]}
     config.se_epoch = 50 # 120 80(0.001)
     config.pe_epoch = 50 # 150 # 100(0.0005)
-    config.se_epoch_train = 10
-    config.pe_epoch_train = 150
+    config.se_epoch_train = 50
+    config.pe_epoch_train = 50
     config.se_train_savepath = 'spectral_weights/spectral_weights_'+data_train+'_'+str(config.se_epoch_train)+'.pt'
     config.pe_train_savepath  = 'partitioning_weights/partitioning_weights_'+data_train+'_'+str(config.se_epoch_train)+'_'+str(config.pe_epoch_train)+'.pt'
     config.se_test_savepath = 'spectral_weights/spectral_weights_'+data_test+'.pt'

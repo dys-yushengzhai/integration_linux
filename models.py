@@ -202,9 +202,9 @@ class ModelSpectral_1026(torch.nn.Module):
     def get_info(self):
         return self.arr_cluster,self.arr_edge,self.last_gc
         
-class ModelPartitioning_1026(torch.nn.Module):
+class ModelPartitioning_1026_1v1(torch.nn.Module):
     def __init__(self,pe_params):
-        super(ModelPartitioning_1026,self).__init__()
+        super(ModelPartitioning_1026_1v1,self).__init__()
 
         self.l = pe_params.get('l')
         self.pre = pe_params.get('pre')
@@ -229,19 +229,59 @@ class ModelPartitioning_1026(torch.nn.Module):
         
         self.arr_edge = None
 
-    def forward(self,graph,cluster_info,edge_info):
+    def forward(self,graph):
         x, edge_index, batch = graph.x, graph.edge_index, graph.batch
         x = self.activation(self.conv_first(x, edge_index))
-        
+        x_origin = x
         if self.arr_edge is None:
-            x_info = []
+
             cluster_info = []
             edge_info = []
             while x.size()[0] > self.coarsening_threshold:
-                # pre-smoothing
-                for i in range(self.pre):
-                    x = self.activation(self.conv_pre[i](x, edge_index))
-                
+                # pooling / coarsening /restriction
+                cluster = graph_coarsen(edge_index[0],edge_index[1],weight=None,num_nodes=x.shape[0])
+                cluster_info.append(cluster)
+                edge_info.append(edge_index)
+                gc = avg_pool(cluster, Batch(batch=batch, x=x, edge_index=edge_index))
+                x,edge_index,batch = gc.x,gc.edge_index,gc.batch
+            self.arr_cluster = cluster_info
+            self.arr_edge = edge_info
+            self.last_gc = gc
+        
+        x_info = []
+        x = x_origin
+        nMap = len(self.arr_cluster)
+        for map_no in range(nMap):
+            for i in range(self.pre):
+                x = self.activation(self.conv_pre[i](x, edge_index))
+            x_info.append(x)
+            gc = avg_pool(self.arr_cluster[map_no], Batch(batch=batch, x=x, edge_index=self.arr_edge[map_no]))
+            x,edge_index,batch = gc.x,gc.edge_index,gc.batch
+
+        self.arr_x = x_info
+           
+        # coarsen iterations
+        x = self.activation(self.conv_coarse(x,edge_index))
+        for map_no in reversed(range(nMap)):
+            # un-pooling / interpolation / prolongation / refinement
+            edge_index = self.arr_edge[map_no]
+            cluster = self.arr_cluster[map_no]
+            output_index,inverse = torch.unique(cluster,return_inverse=True)
+            x = (x[inverse] + self.arr_x[map_no])/2
+            # post-smoothing
+            for i in range(self.post):
+                x = self.activation(self.conv_post[i](x, edge_index))
+                    
+        x=self.lins1(x)
+        x=self.activation(x)
+        x=self.lins2(x)
+        x=self.activation(x)
+        x=self.lins3(x)
+        x=self.activation(x)
+        x=self.final(x)
+        x=torch.softmax(x,dim=1)
+        return x
+            
         
         
         
